@@ -719,6 +719,145 @@
     .btn-eject:hover {
       background: var(--danger-hover);
     }
+
+    /* Custom Dialog Popup Modern (Menggantikan alert/confirm browser) */
+    .custom-dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+
+    .custom-dialog-backdrop.active {
+      display: flex;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .custom-dialog-card {
+      background: #FFFFFF;
+      border-radius: 20px;
+      padding: 1.75rem 1.5rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: var(--shadow-lg);
+      animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .dialog-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .dialog-icon-wrapper.danger {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    .dialog-icon-wrapper.primary {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .dialog-icon-wrapper svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+
+    .dialog-heading {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.4rem;
+    }
+
+    .dialog-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .dialog-input {
+      width: 100%;
+      background: var(--bg-subtle);
+      border: 1.5px solid var(--border-light);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 0.925rem;
+      font-family: var(--font-body);
+      outline: none;
+      margin-bottom: 1.25rem;
+      transition: all 0.2s;
+    }
+
+    .dialog-input:focus {
+      background: #FFFFFF;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-shadow);
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 0.65rem;
+      width: 100%;
+    }
+
+    .dialog-actions button {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-dialog-cancel {
+      background: var(--bg-subtle);
+      color: var(--text-muted);
+      border: 1px solid var(--border-light) !important;
+    }
+
+    .btn-dialog-cancel:hover {
+      background: #E2E8F0;
+      color: var(--text-main);
+    }
+
+    .btn-dialog-confirm-danger {
+      background: var(--danger);
+      color: #FFFFFF;
+    }
+
+    .btn-dialog-confirm-danger:hover {
+      background: var(--danger-hover);
+    }
+
+    .btn-dialog-confirm-primary {
+      background: var(--primary);
+      color: #FFFFFF;
+    }
+
+    .btn-dialog-confirm-primary:hover {
+      background: var(--primary-hover);
+    }
   </style>
 </head>
 <body>
@@ -840,6 +979,22 @@
       <div class="modal-btn-group">
         <button id="modalCloseBtn" class="btn-keep">Tutup</button>
         <button id="modalRemoveBtn" class="btn-eject">Keluarkan Santri</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Confirmation & Input Dialog Modal -->
+  <div id="customDialog" class="custom-dialog-backdrop">
+    <div class="custom-dialog-card">
+      <div id="dialogIcon" class="dialog-icon-wrapper danger">
+        <!-- Injected via JS -->
+      </div>
+      <div id="dialogTitle" class="dialog-heading">Konfirmasi</div>
+      <div id="dialogMessage" class="dialog-desc">Apakah Anda yakin?</div>
+      <input type="text" id="dialogInput" class="dialog-input" style="display: none;" />
+      <div class="dialog-actions">
+        <button id="dialogCancelBtn" class="btn-dialog-cancel">Cancel</button>
+        <button id="dialogConfirmBtn" class="btn-dialog-confirm-danger">Ya, Lanjutkan</button>
       </div>
     </div>
   </div>
@@ -1033,24 +1188,104 @@
       });
     }
 
+    // Custom Dialog Helper Functions
+    let dialogCallback = null;
+
+    function showConfirmDialog({ title, message, iconType, confirmText, isDanger, onConfirm }) {
+      const dialog = document.getElementById("customDialog");
+      const iconWrap = document.getElementById("dialogIcon");
+      const titleEl = document.getElementById("dialogTitle");
+      const msgEl = document.getElementById("dialogMessage");
+      const inputEl = document.getElementById("dialogInput");
+      const confirmBtn = document.getElementById("dialogConfirmBtn");
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      inputEl.style.display = "none";
+      
+      iconWrap.className = "dialog-icon-wrapper " + (isDanger ? "danger" : "primary");
+      iconWrap.innerHTML = isDanger ? `
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      ` : `
+        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      `;
+
+      confirmBtn.className = isDanger ? "btn-dialog-confirm-danger" : "btn-dialog-confirm-primary";
+      confirmBtn.textContent = confirmText || "Ya, Lanjutkan";
+
+      dialogCallback = onConfirm;
+      dialog.classList.add("active");
+    }
+
+    function showInputDialog({ title, message, initialValue, onConfirm }) {
+      const dialog = document.getElementById("customDialog");
+      const iconWrap = document.getElementById("dialogIcon");
+      const titleEl = document.getElementById("dialogTitle");
+      const msgEl = document.getElementById("dialogMessage");
+      const inputEl = document.getElementById("dialogInput");
+      const confirmBtn = document.getElementById("dialogConfirmBtn");
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      inputEl.style.display = "block";
+      inputEl.value = initialValue || "";
+
+      iconWrap.className = "dialog-icon-wrapper primary";
+      iconWrap.innerHTML = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+
+      confirmBtn.className = "btn-dialog-confirm-primary";
+      confirmBtn.textContent = "Simpan Perubahan";
+
+      dialogCallback = () => {
+        const val = inputEl.value.trim();
+        if (val) onConfirm(val);
+      };
+
+      dialog.classList.add("active");
+      setTimeout(() => inputEl.focus(), 100);
+    }
+
+    function closeCustomDialog() {
+      const dialog = document.getElementById("customDialog");
+      dialog.classList.remove("active");
+      dialogCallback = null;
+    }
+
+    document.getElementById("dialogCancelBtn").addEventListener("click", closeCustomDialog);
+    document.getElementById("dialogConfirmBtn").addEventListener("click", () => {
+      if (dialogCallback) dialogCallback();
+      closeCustomDialog();
+    });
+
     window.editSantri = function(index) {
       const cur = santriList[index];
-      const res = prompt("Ubah nama santri:", cur);
-      if (res && res.trim() !== "") {
-        santriList[index] = res.trim();
-        saveData();
-        drawWheel();
-        renderSantriList();
-      }
+      showInputDialog({
+        title: "Ubah Nama Santri",
+        message: "Perbarui nama santri di bawah ini:",
+        initialValue: cur,
+        onConfirm: (newName) => {
+          santriList[index] = newName;
+          saveData();
+          drawWheel();
+          renderSantriList();
+        }
+      });
     };
 
     window.deleteSantri = function(index) {
-      if (confirm(`Hapus "${santriList[index]}" dari daftar?`)) {
-        santriList.splice(index, 1);
-        saveData();
-        drawWheel();
-        renderSantriList();
-      }
+      const name = santriList[index];
+      showConfirmDialog({
+        title: "Hapus Santri",
+        message: `Keluarkan "${name}" dari daftar roda putaran?`,
+        confirmText: "Hapus Santri",
+        isDanger: true,
+        onConfirm: () => {
+          santriList.splice(index, 1);
+          saveData();
+          drawWheel();
+          renderSantriList();
+        }
+      });
     };
 
     document.getElementById("addSantriForm").addEventListener("submit", (e) => {
@@ -1068,11 +1303,17 @@
 
     document.getElementById("clearHistoryBtn").addEventListener("click", () => {
       if (historyList.length === 0) return;
-      if (confirm("Kosongkan semua riwayat undian?")) {
-        historyList = [];
-        saveData();
-        renderHistoryList();
-      }
+      showConfirmDialog({
+        title: "Kosongkan Riwayat",
+        message: "Apakah Anda yakin ingin menghapus seluruh riwayat undian yang tersimpan?",
+        confirmText: "Hapus Riwayat",
+        isDanger: true,
+        onConfirm: () => {
+          historyList = [];
+          saveData();
+          renderHistoryList();
+        }
+      });
     });
 
     /* Formula Presisi Panah Atas (270 derajat) */
